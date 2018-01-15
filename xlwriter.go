@@ -13,7 +13,7 @@ type XlWriterStyles struct{ Default, Bold int }
 
 // XlWriter wraps excelize with a context and provide easy methods like WriteColumns,WriteStruct
 type XlWriter struct {
-	File        *excelize.File
+	*excelize.File
 	Sheet       string
 	L, C, Style int
 	Styles      XlWriterStyles
@@ -87,12 +87,15 @@ func (w *XlWriter) WriteColumns(its ...interface{}) {
 			}
 		}
 		if isStructWithSlices {
+			//fmt.Println("sws")
 			for i := 0; i < v.NumField(); i++ {
 				if v.Field(i).Kind() == reflect.Slice {
+					//fmt.Println("-", v.Type().Field(i).Name)
 					w.WriteColumns(v.Type().Field(i).Name, v.Field(i))
 				}
 			}
 		} else if v.Kind() == reflect.Slice {
+			//fmt.Println("slice", v.Len())
 			for j := 0; j < v.Len(); j++ {
 				w.WriteValue(v.Index(j))
 				w.L++
@@ -101,6 +104,7 @@ func (w *XlWriter) WriteColumns(its ...interface{}) {
 			w.C++
 			w.L = 0
 		} else if v.Kind() == reflect.String {
+			//fmt.Println("string", v.String())
 			w.Style = w.Styles.Bold
 			w.WriteString(v.String())
 			w.L++
@@ -136,9 +140,17 @@ func (w *XlWriter) WriteStructs(its ...interface{}) {
 	}
 }
 
-func (w *XlWriter) RenameSheet(newName string) {
-	w.File.SetSheetName(w.Sheet, "Plan")
+func (w *XlWriter) NewSheet(newName string) int {
+	r := w.File.NewSheet(newName)
 	w.Sheet = newName
+	return r
+}
+
+func (w *XlWriter) SetSheetName(oldName, newName string) {
+	w.File.SetSheetName(oldName, newName)
+	if w.Sheet == oldName {
+		w.Sheet = newName
+	}
 }
 
 func (w *XlWriter) SaveAs(filename string) { w.File.SaveAs(filename) }
