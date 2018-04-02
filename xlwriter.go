@@ -3,10 +3,10 @@ package xlwriter
 import (
 	//   "errors"
 	"fmt"
+	"github.com/360EntSecGroup-Skylar/excelize"
+	"gonum.org/v1/gonum/floats"
 	"reflect"
 	"time"
-
-	"github.com/360EntSecGroup-Skylar/excelize"
 )
 
 type XlWriterStyles struct{ Default, Bold int }
@@ -89,13 +89,25 @@ func (w *XlWriter) WriteColumns(its ...interface{}) {
 		if isStructWithSlices {
 			//fmt.Println("sws")
 			for i := 0; i < v.NumField(); i++ {
-				if v.Field(i).Kind() == reflect.Slice {
-					//fmt.Println("-", v.Type().Field(i).Name)
-					w.WriteColumns(v.Type().Field(i).Name, v.Field(i))
+				vName := v.Type().Field(i).Name
+				if len(vName) > 0 && vName[0] >= 'A' && vName[0] < 'Z' {
+					if v.Field(i).Kind() == reflect.Slice {
+						//fmt.Println("-", vName)
+
+						w.WriteColumns(vName, v.Field(i))
+					}
 				}
 			}
 		} else if v.Kind() == reflect.Slice {
-			//fmt.Println("slice", v.Len())
+			if fl, ok := v.Interface().([]float64); ok && len(fl) > 0 {
+				w.L++
+				w.WriteValue(floats.Min(fl))
+				w.L++
+				w.WriteValue(floats.Max(fl))
+				w.L++
+				w.WriteValue(floats.Sum(fl) / float64(len(fl)))
+				w.L += 2
+			}
 			for j := 0; j < v.Len(); j++ {
 				w.WriteValue(v.Index(j))
 				w.L++
@@ -143,6 +155,8 @@ func (w *XlWriter) WriteStructs(its ...interface{}) {
 func (w *XlWriter) NewSheet(newName string) int {
 	r := w.File.NewSheet(newName)
 	w.Sheet = newName
+	w.L = 0
+	w.C = 0
 	return r
 }
 
